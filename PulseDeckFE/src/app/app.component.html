@@ -1,0 +1,252 @@
+<div class="app" *ngIf="metrics$ | async as m; else loading">
+
+  <header>
+    <span class="logo">PulseDeck</span>
+    <span class="hdr-info">{{ m.system.uptime }}</span>
+    <span class="hdr-info">{{ m.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+  </header>
+
+  <nav>
+    <button *ngFor="let t of ['overview','cpu','memory','storage','network','processes']"
+      [class.active]="activeTab === t" (click)="setTab(t)">
+      {{ t | titlecase }}
+    </button>
+  </nav>
+
+  <main>
+
+    <section *ngIf="activeTab === 'overview'" class="grid-2">
+
+      <div class="card">
+        <div class="card-title">Sistema</div>
+        <div class="row"><span class="lbl">Hostname</span><span>{{ m.system.hostname }}</span></div>
+        <div class="row"><span class="lbl">Sistema Operativo</span><span>{{ m.system.os }}</span></div>
+        <div class="row"><span class="lbl">Architettura</span><span>{{ m.system.arch }}</span></div>
+        <div class="row"><span class="lbl">Avvio sistema</span><span>{{ m.system.boot_time }}</span></div>
+        <div class="row"><span class="lbl">Uptime</span><span>{{ m.system.uptime }}</span></div>
+        <div class="row"><span class="lbl">Utente corrente</span><span>{{ m.system.user }}</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Utilizzo Rapido</div>
+        <div class="bar-label"><span>CPU Totale</span><span>{{ m.cpu.total_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.cpu.total_percent"
+            [style.background]="barColor(m.cpu.total_percent)"></div>
+        </div>
+        <div class="bar-label"><span>RAM</span><span>{{ m.memory.ram_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.memory.ram_percent"
+            [style.background]="barColor(m.memory.ram_percent)"></div>
+        </div>
+        <div class="bar-label"><span>SWAP</span><span>{{ m.memory.swap_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.memory.swap_percent"
+            [style.background]="barColor(m.memory.swap_percent)"></div>
+        </div>
+        <div class="row" style="margin-top:10px"><span class="lbl">Frequenza CPU</span><span>{{ m.cpu.freq_current
+            }}</span></div>
+        <div class="row"><span class="lbl">RAM usata / totale</span><span>{{ m.memory.ram_used }} / {{
+            m.memory.ram_total }}</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">CPU</div>
+        <div class="row"><span class="lbl">Modello</span><span class="truncate">{{ m.cpu.model }}</span></div>
+        <div class="row"><span class="lbl">Core fisici / logici</span><span>{{ m.cpu.physical_cores }} / {{
+            m.cpu.logical_cores }}</span></div>
+        <div class="row"><span class="lbl">Frequenza</span><span>{{ m.cpu.freq_current }}</span></div>
+        <div class="row"><span class="lbl">Utilizzo</span><span>{{ m.cpu.total_percent }}%</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Memoria</div>
+        <div class="row"><span class="lbl">RAM Totale</span><span>{{ m.memory.ram_total }}</span></div>
+        <div class="row"><span class="lbl">RAM Usata</span><span>{{ m.memory.ram_used }}</span></div>
+        <div class="row"><span class="lbl">RAM Disponibile</span><span>{{ m.memory.ram_available }}</span></div>
+        <div class="row"><span class="lbl">SWAP Totale</span><span>{{ m.memory.swap_total }}</span></div>
+        <div class="row"><span class="lbl">SWAP Usata</span><span>{{ m.memory.swap_used }}</span></div>
+      </div>
+
+    </section>
+
+    <section *ngIf="activeTab === 'cpu'" class="grid-2">
+
+      <div class="card">
+        <div class="card-title">Informazioni CPU</div>
+        <div class="row"><span class="lbl">Modello</span><span class="truncate">{{ m.cpu.model }}</span></div>
+        <div class="row"><span class="lbl">Core fisici</span><span>{{ m.cpu.physical_cores }}</span></div>
+        <div class="row"><span class="lbl">Thread (core logici)</span><span>{{ m.cpu.logical_cores }}</span></div>
+        <div class="row"><span class="lbl">Architettura</span><span>{{ m.cpu.arch }}</span></div>
+        <div class="row"><span class="lbl">Frequenza attuale</span><span>{{ m.cpu.freq_current }}</span></div>
+        <div class="row"><span class="lbl">Frequenza minima</span><span>{{ m.cpu.freq_min }}</span></div>
+        <div class="row"><span class="lbl">Frequenza massima</span><span>{{ m.cpu.freq_max }}</span></div>
+        <div class="row"><span class="lbl">Context switches</span><span>{{ m.cpu.ctx_switches | number }}</span></div>
+        <div class="row"><span class="lbl">Interrupts</span><span>{{ m.cpu.interrupts | number }}</span></div>
+        <div class="row"><span class="lbl">Soft interrupts</span><span>{{ m.cpu.soft_interrupts | number }}</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Utilizzo per Core</div>
+        <div class="bar-label"><span>Utilizzo Totale</span><span>{{ m.cpu.total_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.cpu.total_percent"
+            [style.background]="barColor(m.cpu.total_percent)"></div>
+        </div>
+        <ng-container *ngFor="let i of cores(m.cpu.logical_cores)">
+          <div class="bar-label"><span>Core {{ i }}</span><span>{{ m.cpu.per_core[i] }}%</span></div>
+          <div class="bar-track">
+            <div class="bar-fill" [style.width.%]="m.cpu.per_core[i]" [style.background]="barColor(m.cpu.per_core[i])">
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tempi CPU</div>
+        <div class="row"><span class="lbl">User</span><span>{{ m.cpu.times_user }} s</span></div>
+        <div class="row"><span class="lbl">System</span><span>{{ m.cpu.times_system }} s</span></div>
+        <div class="row"><span class="lbl">Idle</span><span>{{ m.cpu.times_idle }} s</span></div>
+        <div class="row"><span class="lbl">Interrupt</span><span>{{ m.cpu.times_interrupt }} s</span></div>
+        <div class="row"><span class="lbl">DPC</span><span>{{ m.cpu.times_dpc }} s</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Carico &amp; Info</div>
+        <div class="row"><span class="lbl">Load avg 1 min</span><span>{{ m.cpu.load_1 !== null ? (m.cpu.load_1 |
+            number:'1.2-2') : 'non disponibile' }}</span></div>
+        <div class="row"><span class="lbl">Load avg 5 min</span><span>{{ m.cpu.load_5 !== null ? (m.cpu.load_5 |
+            number:'1.2-2') : 'non disponibile' }}</span></div>
+        <div class="row"><span class="lbl">Load avg 15 min</span><span>{{ m.cpu.load_15 !== null ? (m.cpu.load_15 |
+            number:'1.2-2') : 'non disponibile' }}</span></div>
+        <div class="row"><span class="lbl">Processi attivi</span><span>{{ m.cpu.process_count }}</span></div>
+        <div class="row"><span class="lbl">Thread totali</span><span>{{ m.cpu.thread_count | number }}</span></div>
+      </div>
+
+    </section>
+
+    <section *ngIf="activeTab === 'memory'" class="grid-2">
+
+      <div class="card">
+        <div class="card-title">RAM — Memoria Fisica</div>
+        <div class="bar-label"><span>Utilizzo RAM</span><span>{{ m.memory.ram_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.memory.ram_percent"
+            [style.background]="barColor(m.memory.ram_percent)"></div>
+        </div>
+        <div class="row" style="margin-top:10px"><span class="lbl">Totale</span><span>{{ m.memory.ram_total }}</span>
+        </div>
+        <div class="row"><span class="lbl">Usata</span><span>{{ m.memory.ram_used }}</span></div>
+        <div class="row"><span class="lbl">Libera</span><span>{{ m.memory.ram_free }}</span></div>
+        <div class="row"><span class="lbl">Disponibile</span><span>{{ m.memory.ram_available }}</span></div>
+        <div class="row"><span class="lbl">Percentuale</span><span>{{ m.memory.ram_percent }}%</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">SWAP — Memoria Virtuale</div>
+        <div class="bar-label"><span>Utilizzo SWAP</span><span>{{ m.memory.swap_percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="m.memory.swap_percent"
+            [style.background]="barColor(m.memory.swap_percent)"></div>
+        </div>
+        <div class="row" style="margin-top:10px"><span class="lbl">Totale</span><span>{{ m.memory.swap_total }}</span>
+        </div>
+        <div class="row"><span class="lbl">Usata</span><span>{{ m.memory.swap_used }}</span></div>
+        <div class="row"><span class="lbl">Libera</span><span>{{ m.memory.swap_free }}</span></div>
+        <div class="row"><span class="lbl">Swap in (totale)</span><span>{{ m.memory.swap_in }}</span></div>
+        <div class="row"><span class="lbl">Swap out (totale)</span><span>{{ m.memory.swap_out }}</span></div>
+      </div>
+
+    </section>
+
+    <section *ngIf="activeTab === 'storage'">
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">I/O Disco (velocità istantanea)</div>
+        <div class="row"><span class="lbl">Lettura</span><span>{{ m.storage.read_speed }}</span></div>
+        <div class="row"><span class="lbl">Scrittura</span><span>{{ m.storage.write_speed }}</span></div>
+        <div class="row"><span class="lbl">Letto totale</span><span>{{ m.storage.read_total }}</span></div>
+        <div class="row"><span class="lbl">Scritto totale</span><span>{{ m.storage.write_total }}</span></div>
+      </div>
+
+      <div class="card" *ngFor="let p of m.storage.partitions" style="margin-bottom:12px">
+        <div class="card-title">Disco: {{ p.device }} ({{ p.mountpoint }})</div>
+        <div class="bar-label"><span>Utilizzo</span><span>{{ p.percent }}%</span></div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="p.percent" [style.background]="barColor(p.percent)"></div>
+        </div>
+        <div class="row" style="margin-top:8px"><span class="lbl">Totale</span><span>{{ p.total }}</span></div>
+        <div class="row"><span class="lbl">Usato</span><span>{{ p.used }}</span></div>
+        <div class="row"><span class="lbl">Libero</span><span>{{ p.free }}</span></div>
+        <div class="row"><span class="lbl">Filesystem</span><span>{{ p.fstype }}</span></div>
+        <div class="row"><span class="lbl">Opzioni mount</span><span>{{ p.opts }}</span></div>
+      </div>
+
+    </section>
+
+    <section *ngIf="activeTab === 'network'">
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Traffico Globale</div>
+        <div class="row"><span class="lbl">Upload (velocità)</span><span>{{ m.network.upload_speed }}</span></div>
+        <div class="row"><span class="lbl">Download (velocità)</span><span>{{ m.network.download_speed }}</span></div>
+        <div class="row"><span class="lbl">Inviato totale</span><span>{{ m.network.sent_total }}</span></div>
+        <div class="row"><span class="lbl">Ricevuto totale</span><span>{{ m.network.recv_total }}</span></div>
+        <div class="row"><span class="lbl">Pacchetti inviati</span><span>{{ m.network.packets_sent | number }}</span>
+        </div>
+        <div class="row"><span class="lbl">Pacchetti ricevuti</span><span>{{ m.network.packets_recv | number }}</span>
+        </div>
+        <div class="row"><span class="lbl">Errori in ingresso</span><span>{{ m.network.err_in | number }}</span></div>
+        <div class="row"><span class="lbl">Errori in uscita</span><span>{{ m.network.err_out | number }}</span></div>
+        <div class="row"><span class="lbl">Drop in ingresso</span><span>{{ m.network.drop_in | number }}</span></div>
+        <div class="row"><span class="lbl">Drop in uscita</span><span>{{ m.network.drop_out | number }}</span></div>
+      </div>
+
+      <div class="card" *ngFor="let iface of m.network.interfaces" style="margin-bottom:12px">
+        <div class="card-title">Interfaccia: {{ iface.name }}</div>
+        <div class="row"><span class="lbl">IPv4</span><span>{{ iface.ipv4 }}</span></div>
+        <div class="row"><span class="lbl">IPv6</span><span>{{ iface.ipv6 }}</span></div>
+        <div class="row"><span class="lbl">MAC</span><span>{{ iface.mac }}</span></div>
+        <div class="row">
+          <span class="lbl">Stato</span>
+          <span [class.up]="iface.status === 'Attiva'" [class.down]="iface.status === 'Inattiva'">{{ iface.status
+            }}</span>
+        </div>
+        <div class="row"><span class="lbl">Velocità</span><span>{{ iface.speed }}</span></div>
+        <div class="row"><span class="lbl">MTU</span><span>{{ iface.mtu }}</span></div>
+      </div>
+
+    </section>
+
+    <section *ngIf="activeTab === 'processes'">
+      <div class="proc-table">
+        <div class="proc-header">
+          <span style="width:65px">PID</span>
+          <span style="width:210px">Nome</span>
+          <span style="width:85px">Stato</span>
+          <span style="width:75px">CPU%</span>
+          <span style="width:95px">RAM</span>
+          <span style="width:65px">Thread</span>
+          <span style="flex:1">Utente</span>
+        </div>
+        <div class="proc-row" *ngFor="let p of m.processes">
+          <span style="width:65px">{{ p.pid }}</span>
+          <span style="width:210px" class="truncate">{{ p.name }}</span>
+          <span style="width:85px">{{ p.status }}</span>
+          <span style="width:75px" [style.color]="barColor(p.cpu_percent)">{{ p.cpu_percent }}%</span>
+          <span style="width:95px">{{ p.ram }}</span>
+          <span style="width:65px">{{ p.threads }}</span>
+          <span style="flex:1" class="truncate">{{ p.user }}</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<ng-template #loading>
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Connessione all'API...</p>
+  </div>
+</ng-template>
