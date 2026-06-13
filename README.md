@@ -57,7 +57,7 @@ python -m venv venv
 pip install -r requirements.txt
 
 # avvia il server (porta 8000)
-uvicorn api:app --reload --port 8000
+python -m uvicorn api:app --reload --port 8000
 ```
 
 Su Linux/macOS sostituisci l'attivazione con `source venv/bin/activate`.
