@@ -65,7 +65,7 @@ export interface Process {
 
 @Injectable({ providedIn: 'root' })
 export class MetricsService {
-  private readonly url = 'http://localhost:8000/api/metrics';
+  private readonly url = 'http://localhost:8001/api/metrics';
 
   metrics$: Observable<Metrics> = timer(0, 1500).pipe(
     switchMap(() => this.http.get<Metrics>(this.url).pipe(
@@ -74,5 +74,5 @@ export class MetricsService {
     shareReplay(1)
   );
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 }
