@@ -44,7 +44,7 @@ jobs:
       - run: npm run build
       - run: npm test -- --watch=false --browsers=ChromeHeadless
       - run: npm audit --audit-level=high
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pulsedeck-web
           path: PulseDeckFE/dist/pulsedeck-web/browser/
