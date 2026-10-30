@@ -146,7 +146,7 @@ def get_metrics():
 
     per_core = psutil.cpu_percent(interval=None, percpu=True)
     cpu_total = sum(per_core) / len(per_core) if per_core else 0
-    freq = optional_metric(psutil.cpu_freq)
+    freq = optional_metric(lambda: psutil.cpu_freq())
     cpu_stats = psutil.cpu_stats()
     cpu_times = psutil.cpu_times()
 

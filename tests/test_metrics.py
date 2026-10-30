@@ -16,7 +16,7 @@ class MetricsCompatibilityTests(unittest.TestCase):
         })
 
     def test_unsupported_optional_metrics_do_not_break_snapshot(self):
-        with patch.object(api.psutil, 'cpu_freq', side_effect=NotImplementedError), \
+        with patch.object(api.psutil, 'cpu_freq', side_effect=NotImplementedError, create=True), \
              patch.object(api.psutil, 'getloadavg', side_effect=OSError), \
              patch.object(api.psutil, 'disk_partitions', side_effect=PermissionError), \
              patch.object(api.psutil, 'disk_io_counters', return_value=None), \
@@ -29,6 +29,15 @@ class MetricsCompatibilityTests(unittest.TestCase):
         self.assertEqual(snapshot['storage']['partitions'], [])
         self.assertEqual(snapshot['network']['sent_total'], 'N/A')
         json.dumps(snapshot, allow_nan=False)
+
+    def test_missing_cpu_frequency_function_does_not_break_snapshot(self):
+        # Some macOS/psutil builds omit the function entirely.
+        with patch.dict(vars(api.psutil)):
+            vars(api.psutil).pop('cpu_freq', None)
+            snapshot = api.get_metrics()
+        self.assertEqual(snapshot['cpu']['freq_current'], 'N/A')
+        self.assertEqual(snapshot['cpu']['freq_min'], 'N/A')
+        self.assertEqual(snapshot['cpu']['freq_max'], 'N/A')
 
     def test_integer_address_families_are_supported(self):
         addresses = [SimpleNamespace(family=int(socket.AF_INET), address='127.0.0.1'),
