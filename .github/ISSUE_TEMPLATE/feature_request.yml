@@ -1,0 +1,15 @@
+name: Proposta di miglioramento
+description: Proponi una funzione o un miglioramento.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quale problema vuoi risolvere?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Soluzione proposta e alternative
+    validations:
+      required: true

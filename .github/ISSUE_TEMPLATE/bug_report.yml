@@ -1,0 +1,22 @@
+name: Segnalazione bug
+description: Segnala un problema riproducibile in PulseDeck.
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Sistema operativo, architettura, versioni Python, Node.js e browser.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Passaggi per riprodurre
+      description: Includi risultato atteso e risultato effettivo.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log o screenshot
+      description: Rimuovi hostname, nomi utente, IP, percorsi personali e altri dati riservati.

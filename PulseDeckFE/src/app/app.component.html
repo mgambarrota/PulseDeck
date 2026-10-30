@@ -1,19 +1,41 @@
 <div class="app" *ngIf="metrics$ | async as m; else loading">
+  <aside class="sidebar">
+    <a class="brand" href="./" aria-label="PulseDeck, pagina iniziale">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h5l3-8 4 16 3-8h5" /></svg></span>
+      <span>Pulse<span class="brand-light">Deck</span><small>SYSTEM MONITOR</small></span>
+    </a>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="Sezioni delle metriche">
+      <button *ngFor="let t of tabs" [class.active]="activeTab === t.id"
+        [attr.aria-current]="activeTab === t.id ? 'page' : null" (click)="setTab(t.id)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="t.icon" /></svg>
+        <span>{{ t.label }}</span><span class="nav-dot" *ngIf="activeTab === t.id"></span>
+      </button>
+    </nav>
+    <div class="host-card"><span class="host-icon">{{ m.system.hostname.slice(0, 1) | uppercase }}</span>
+      <div><strong>{{ m.system.hostname }}</strong><small>{{ m.system.os }}</small></div>
+    </div>
+    <div class="sidebar-footer">PulseDeck <span>Monitor locale</span></div>
+  </aside>
+  <div class="workspace">
+    <header>
+      <div class="breadcrumb">Workspace <span>/</span> <strong>{{ currentTab.label }}</strong></div>
+      <div class="connection" [class.offline]="connectionError$ | async"><i></i>{{ (connectionError$ | async) ? 'Riconnessione' : 'Connesso' }}</div>
+    </header>
+    <main>
+      <div class="page-heading">
+        <div><div class="eyebrow">IL TUO CENTRO DI CONTROLLO</div><h1>{{ currentTab.label }}<span>.</span></h1><p>{{ currentTab.description }}</p></div>
+        <div class="updated"><span>Ultimo aggiornamento</span><strong>{{ m.timestamp | date:'HH:mm:ss' }} <span>· ogni 1,5 s</span></strong></div>
+      </div>
+      <div class="connection-alert" role="alert" *ngIf="connectionError$ | async as error">{{ error }} I dati visualizzati risalgono all’ultimo aggiornamento.</div>
+      <div class="summary-grid">
+        <article class="summary-card cpu-summary"><div class="summary-label"><span>Utilizzo CPU</span><span class="metric-symbol">CPU</span></div><div class="summary-value">{{ m.cpu.total_percent | number:'1.0-1' }}<span>%</span></div><svg class="sparkline cpu-line" viewBox="0 0 240 38" preserveAspectRatio="none" role="img" [attr.aria-label]="'Andamento CPU, ultimi ' + sampleCount + ' campioni, scala da 0 a 100 percento'"><path class="chart-baseline" d="M0 35H240 M0 18H240"/><polyline [attr.points]="cpuSparkline"/><circle *ngIf="sampleCount" [attr.cx]="(sampleCount - 1) * 240 / 31" [attr.cy]="34 - m.cpu.total_percent * .3" r="2"/></svg><div class="mini-track"><span [style.width.%]="m.cpu.total_percent" [style.background]="barColor(m.cpu.total_percent)"></span></div><small>{{ m.cpu.logical_cores }} core logici <span>· {{ m.cpu.freq_current }}</span></small></article>
+        <article class="summary-card"><div class="summary-label"><span>Memoria RAM</span><span class="metric-symbol">RAM</span></div><div class="summary-value">{{ m.memory.ram_percent | number:'1.0-1' }}<span>%</span></div><svg class="sparkline ram-line" viewBox="0 0 240 38" preserveAspectRatio="none" role="img" [attr.aria-label]="'Andamento RAM, ultimi ' + sampleCount + ' campioni, scala da 0 a 100 percento'"><path class="chart-baseline" d="M0 35H240 M0 18H240"/><polyline [attr.points]="ramSparkline"/><circle *ngIf="sampleCount" [attr.cx]="(sampleCount - 1) * 240 / 31" [attr.cy]="34 - m.memory.ram_percent * .3" r="2"/></svg><div class="mini-track lavender"><span [style.width.%]="m.memory.ram_percent"></span></div><small>{{ m.memory.ram_used }} <span>/ {{ m.memory.ram_total }}</span></small></article>
+        <article class="summary-card"><div class="summary-label"><span>Traffico di rete</span><span class="metric-symbol">NET</span></div><div class="network-value"><span class="download-arrow">↓</span> {{ m.network.download_speed }}</div><div class="network-upload">↑ {{ m.network.upload_speed }} <span>upload</span></div><small>Velocità di trasferimento</small></article>
+        <article class="summary-card"><div class="summary-label"><span>Processi attivi</span><span class="metric-symbol">SYS</span></div><div class="summary-value">{{ m.cpu.process_count }}<span class="process-unit">processi</span></div><div class="process-note">Snapshot dei processi host</div><small>{{ m.cpu.thread_count | number }} <span>thread totali</span></small></article>
+      </div>
+      <div class="section-heading"><h2>{{ activeTab === 'overview' ? 'Dentro il sistema' : 'Dettaglio ' + currentTab.label.toLowerCase() }}</h2><span>METRICHE HOST</span></div>
 
-  <header>
-    <span class="logo">PulseDeck</span>
-    <span class="hdr-info">{{ m.system.uptime }}</span>
-    <span class="hdr-info">{{ m.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-  </header>
-
-  <nav>
-    <button *ngFor="let t of ['overview','cpu','memory','storage','network','processes']"
-      [class.active]="activeTab === t" (click)="setTab(t)">
-      {{ t | titlecase }}
-    </button>
-  </nav>
-
-  <main>
 
     <section *ngIf="activeTab === 'overview'" class="grid-2">
 
@@ -93,7 +115,7 @@
           <div class="bar-fill" [style.width.%]="m.cpu.total_percent"
             [style.background]="barColor(m.cpu.total_percent)"></div>
         </div>
-        <ng-container *ngFor="let i of cores(m.cpu.logical_cores)">
+        <ng-container *ngFor="let i of cores(m.cpu.per_core.length); trackBy: trackCore">
           <div class="bar-label"><span>Core {{ i }}</span><span>{{ m.cpu.per_core[i] }}%</span></div>
           <div class="bar-track">
             <div class="bar-fill" [style.width.%]="m.cpu.per_core[i]" [style.background]="barColor(m.cpu.per_core[i])">
@@ -229,7 +251,7 @@
           <span style="width:65px">Thread</span>
           <span style="flex:1">Utente</span>
         </div>
-        <div class="proc-row" *ngFor="let p of m.processes">
+        <div class="proc-row" *ngFor="let p of m.processes; trackBy: trackProcess">
           <span style="width:65px">{{ p.pid }}</span>
           <span style="width:210px" class="truncate">{{ p.name }}</span>
           <span style="width:85px">{{ p.status }}</span>
@@ -241,12 +263,15 @@
       </div>
     </section>
 
-  </main>
+      <footer class="content-footer"><span>{{ m.system.hostname }} <span> / {{ m.system.arch }}</span></span><span>Acceso da {{ m.system.uptime }}</span></footer>
+    </main>
+  </div>
 </div>
 
 <ng-template #loading>
   <div class="loading">
-    <div class="spinner"></div>
-    <p>Connessione all'API...</p>
+    <span class="loading-brand">PulseDeck<span>.</span></span>
+    <div class="spinner" aria-hidden="true"></div>
+    <p role="status">{{ (connectionError$ | async) || "Connessione all'API..." }}</p>
   </div>
 </ng-template>

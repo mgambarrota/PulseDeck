@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-**PulseDeck** è una dashboard di monitoraggio di sistema in tempo reale. Frontend Angular 19 + backend FastAPI: il backend campiona metriche host (CPU, RAM, swap, disco, rete, processi) tramite `psutil` e le espone su un singolo endpoint REST; il frontend fa polling e renderizza tutto in una SPA a tab.
+**PulseDeck** è una dashboard di monitoraggio di sistema in tempo reale. Frontend Angular 21 + backend FastAPI: il backend campiona metriche host (CPU, RAM, swap, disco, rete, processi) tramite `psutil` e le espone su un singolo endpoint REST; il frontend fa polling e renderizza tutto in una SPA a tab.
 
 L'applicazione è pensata per girare in locale sulla macchina che si vuole monitorare (Windows in primis — diverse metriche e formattazioni sono Windows-aware).
 
@@ -15,7 +15,7 @@ Il repository è un mono-repo a due moduli, non un workspace unificato:
 - [api.py](api.py) — backend FastAPI mono-file (tutta la logica server in un file)
 - [requirements.txt](requirements.txt) — dipendenze Python
 - [PulseDeckFE/](PulseDeckFE/) — progetto Angular CLI standalone (nome interno: `pulsedeck-web`)
-- [venv/](venv/) — virtualenv Python locale (non committare)
+- [venv/](venv/) — virtualenv Python locale (non committare); il nuovo ambiente verificato è `.venv/` con Python 3.12
 
 ## Comandi comuni
 
@@ -29,10 +29,10 @@ Il repository è un mono-repo a due moduli, non un workspace unificato:
 pip install -r requirements.txt
 
 # avvio server di sviluppo (porta 8000, reload abilitato)
-uvicorn api:app --reload --port 8000
+python -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Il frontend si aspetta il backend su `http://localhost:8000` — vedi [PulseDeckFE/src/app/metrics.service.ts:68](PulseDeckFE/src/app/metrics.service.ts#L68). Se cambi porta, aggiorna anche lì.
+Il frontend si aspetta il backend su `/api/metrics (proxy di sviluppo verso http://127.0.0.1:8000)` — vedi [PulseDeckFE/proxy.conf.json](PulseDeckFE/proxy.conf.json). Se cambi porta, aggiorna il target e riavvia Angular. In produzione il server web deve inoltrare `/api` al backend.
 
 ### Frontend (da `PulseDeckFE/`)
 
@@ -66,7 +66,7 @@ Altri due dettagli sui contatori differenziali:
 - Velocità rete e velocità disco I/O sono calcolate confrontando i contatori della chiamata corrente con quelli memorizzati in `_net_prev` / `_disk_prev` ([api.py:21-22](api.py#L21-L22)). La prima richiesta dopo l'avvio restituisce quindi `"N/A"` per queste velocità — è atteso, non un bug.
 - `getloadavg()` non esiste su Windows e viene gestito con un try/except che restituisce `[None, None, None]` ([api.py:120-123](api.py#L120-L123)). Il frontend mostra "non disponibile" in quel caso.
 
-CORS è aperto a `*` per i soli metodi `GET` ([api.py:14-19](api.py#L14-L19)) — sufficiente per uso locale, da restringere se mai dovesse essere esposto.
+CORS consente per default soltanto le origini localhost/127.0.0.1:4200 per i metodi `GET`; le origini sono configurabili con `PULSEDECK_CORS_ORIGINS` ([api.py:14-19](api.py#L14-L19)) — sufficiente per uso locale, da restringere se mai dovesse essere esposto.
 
 ### Frontend ([PulseDeckFE/src/app/](PulseDeckFE/src/app/))
 
@@ -78,7 +78,7 @@ Quattro file applicativi, tutto qui:
 - [app.component.scss](PulseDeckFE/src/app/app.component.scss) — tutto lo styling specifico della dashboard
 - [metrics.service.ts](PulseDeckFE/src/app/metrics.service.ts) — service `providedIn: 'root'` con le interfacce TypeScript della response e l'observable di polling
 
-**Pattern di polling** ([metrics.service.ts:70-75](PulseDeckFE/src/app/metrics.service.ts#L70-L75)): `timer(0, 1500)` + `switchMap(fetch)` + `shareReplay(1)`. L'observable è creato una sola volta a livello di service e condiviso. `catchError(() => EMPTY)` significa che se l'API è giù il template resta sul `*ngIf="metrics$ | async as m; else loading"` (schermata "Connessione all'API…") finché non torna disponibile — nessun retry esplicito, è il `timer` che ci riprova al prossimo tick.
+**Pattern di polling** ([metrics.service.ts:70-75](PulseDeckFE/src/app/metrics.service.ts#L70-L75)): `timer(0, 1500)` + `exhaustMap(fetch)` + timeout di 8 secondi + `shareReplay({ bufferSize: 1, refCount: true })`. L'observable è creato una sola volta a livello di service e condiviso. `catchError` pubblica il problema su `connectionError$` e restituisce `EMPTY`: il timer riprova automaticamente. Il template mostra il problema anche dopo il primo caricamento e conserva gli ultimi dati. `exhaustMap` evita richieste sovrapposte senza annullare quelle lente.
 
 **Forma del contratto dati**: le interfacce TypeScript in [metrics.service.ts:6-64](PulseDeckFE/src/app/metrics.service.ts#L6-L64) sono il contratto. Devono restare allineate manualmente con il dict restituito da `get_metrics()` in [api.py:201-269](api.py#L201-L269) — non c'è generazione di tipi. Quando aggiungi/modifichi un campo nel backend, aggiorna anche l'interfaccia corrispondente e il template che lo consuma.
 

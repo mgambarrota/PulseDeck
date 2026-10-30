@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, timer, EMPTY } from 'rxjs';
-import { switchMap, shareReplay, catchError } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, timer, EMPTY, BehaviorSubject } from 'rxjs';
+import { exhaustMap, shareReplay, catchError, timeout, tap } from 'rxjs/operators';
 
 export interface Metrics {
   timestamp: string;
@@ -65,13 +65,22 @@ export interface Process {
 
 @Injectable({ providedIn: 'root' })
 export class MetricsService {
-  private readonly url = 'http://localhost:8001/api/metrics';
+  private readonly url = '/api/metrics';
+  readonly connectionError$ = new BehaviorSubject<string | null>(null);
 
   metrics$: Observable<Metrics> = timer(0, 1500).pipe(
-    switchMap(() => this.http.get<Metrics>(this.url).pipe(
-      catchError(() => EMPTY)
+    exhaustMap(() => this.http.get<Metrics>(this.url).pipe(
+      timeout(8000),
+      tap(() => this.connectionError$.next(null)),
+      catchError((error: unknown) => {
+        const detail = error instanceof HttpErrorResponse && error.status
+          ? `Errore HTTP ${error.status}.`
+          : 'API non raggiungibile o richiesta scaduta.';
+        this.connectionError$.next(`${detail} Verifica che il backend sia avviato sulla porta 8000. Riconnessione automatica in corso…`);
+        return EMPTY;
+      })
     )),
-    shareReplay(1)
+    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   constructor(private http: HttpClient) { }

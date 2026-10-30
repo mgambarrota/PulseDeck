@@ -1,116 +1,188 @@
 # PulseDeck
 
-Dashboard di monitoraggio di sistema in tempo reale. Un backend FastAPI campiona le metriche dell'host tramite `psutil` e un frontend Angular 19 le visualizza in una SPA a tab con aggiornamento continuo.
+**Il tuo sistema, a colpo d'occhio.** Dashboard locale per CPU, memoria, dischi,
+rete e processi, con backend FastAPI e frontend Angular 21.
 
-Pensato per girare in locale sulla macchina da monitorare. Funziona su **Windows, Linux e macOS** senza modifiche al codice.
+[![CI](https://github.com/mgambarrota/PulseDeck/actions/workflows/ci.yml/badge.svg)](https://github.com/mgambarrota/PulseDeck/actions/workflows/ci.yml)
+[![Licenza MIT](https://img.shields.io/badge/license-MIT-a6e3bc)](LICENSE)
 
-## Cosa mostra
+## Funzionalità
 
-Sei viste, una per tab:
+- Sei viste: panoramica, processore, memoria, archiviazione, rete e processi.
+- Aggiornamento ogni 1,5 secondi, con timeout ed errori di connessione visibili.
+- Storico degli ultimi 32 campioni di CPU e RAM, mantenuto solo nel browser.
+- Tema scuro, layout responsive, animazioni e supporto a `prefers-reduced-motion`.
+- Top 35 processi per CPU, raccolti in background ogni 2 secondi.
+- Metriche opzionali con fallback quando il sistema non le rende disponibili.
+- Nessun account o database; nessuna telemetria esterna implementata dall'app.
 
-- **Overview** — riepilogo sistema e barre di utilizzo CPU/RAM/SWAP
-- **CPU** — modello, frequenze, core fisici/logici, utilizzo per-core, tempi CPU, context switch, interrupts, load average
-- **Memory** — dettaglio RAM e SWAP (totale, usata, libera, disponibile)
-- **Storage** — velocità I/O istantanea, totali letti/scritti, utilizzo per ogni partizione
-- **Network** — velocità upload/download, contatori pacchetti/errori/drop, dettaglio per ogni interfaccia (IPv4, IPv6, MAC, stato, MTU)
-- **Processes** — top 35 processi ordinati per CPU%, con PID, nome, stato, RAM, thread, utente
+Pensato per **Windows, Linux e macOS**. Le verifiche locali sono state eseguite
+su macOS; la CI definisce test backend per tutti e tre i sistemi. Il risultato
+nelle Actions, dopo il push, è la verifica delle singole combinazioni.
 
-I dati vengono aggiornati ogni 1.5 secondi.
+## Prerequisiti
 
-## Stack tecnico
+- Python **3.11+** (CI su 3.11 e 3.12).
+- Node.js **22.12+ nella linea 22.x**, indicato anche in `.nvmrc`, e npm.
+- Git. Angular CLI globale non necessaria.
 
-| Componente | Tecnologia |
-|------------|------------|
-| Backend    | Python 3 + FastAPI + Uvicorn + psutil |
-| Frontend   | Angular 19 (standalone, senza NgModule) + RxJS + SCSS |
-| Trasporto  | REST/JSON, polling HTTP |
+## Avvio locale
 
-## Struttura del repository
-
-```
-dashboard/
-├── api.py              # backend FastAPI mono-file
-├── requirements.txt    # dipendenze Python
-├── PulseDeckFE/        # frontend Angular
-│   └── src/app/        # AppComponent + MetricsService
-└── README.md
+```sh
+git clone https://github.com/mgambarrota/PulseDeck.git
+cd PulseDeck
 ```
 
-## Avvio rapido
+### 1. Backend
 
-### 1. Prerequisiti
+Controlla la versione con `python3 --version` (oppure `py --version` su Windows).
+Se il comando predefinito punta a una versione vecchia, seleziona esplicitamente
+Python 3.11 o successivo quando crei il virtualenv, ad esempio `python3.12 -m venv .venv`.
 
-- Python 3.9+
-- Node.js 18+ e npm
-- Angular CLI (`npm install -g @angular/cli`) — opzionale, gli script npm bastano
+**macOS / Linux**:
 
-### 2. Backend
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
 
-Dalla root del repository:
+**Windows (PowerShell)**:
 
 ```powershell
-# crea ed attiva il virtualenv (Windows PowerShell)
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# installa le dipendenze
-pip install -r requirements.txt
-
-# avvia il server (porta 8000)
-python -m uvicorn api:app --reload --port 8000
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Su Linux/macOS sostituisci l'attivazione con `source venv/bin/activate`.
+Su Windows non occorre attivare il virtualenv né modificare le policy PowerShell.
+Se hai già un ambiente `venv`, puoi usarlo soltanto se creato con Python 3.11 o successivo; reinstalla le dipendenze aggiornate.
 
-### 3. Frontend
+### 2. Frontend
 
-In un secondo terminale, dalla cartella `PulseDeckFE/`:
+In un secondo terminale:
 
-```bash
-npm install      # solo la prima volta
-npm start        # serve su http://localhost:4200
+```sh
+cd PulseDeckFE
+npm ci
+npm start
 ```
 
-Apri il browser su [http://localhost:4200](http://localhost:4200). Il frontend cerca il backend su `http://localhost:8000` — se cambi porta, aggiornala in [PulseDeckFE/src/app/metrics.service.ts](PulseDeckFE/src/app/metrics.service.ts).
+Apri **[localhost:4200](http://localhost:4200)**. Arresta ciascun servizio con `Ctrl+C`.
+
+Angular inoltra `/api` a `http://127.0.0.1:8000` tramite
+[proxy.conf.json](PulseDeckFE/proxy.conf.json). Se cambi porta al backend,
+aggiorna il target del proxy e riavvia `npm start`.
+
+### Se la dashboard non si connette
+
+1. Verifica che il terminale backend mostri l'avvio completato, senza traceback.
+2. Apri [localhost:8000/api/metrics](http://localhost:8000/api/metrics): deve restituire JSON.
+3. Apri [localhost:4200/api/metrics](http://localhost:4200/api/metrics): deve restituire lo stesso tipo di dati tramite proxy.
+4. Se funziona solo la prima URL, verifica il target del proxy e riavvia Angular.
+
+Il polling riprova automaticamente. Una richiesta può durare al massimo 8 secondi;
+le richieste non si sovrappongono. In caso di disconnessione i dati precedenti
+restano visibili insieme a un avviso.
 
 ## API
 
-Un solo endpoint:
+`GET /api/metrics` restituisce uno snapshot con queste sezioni:
 
-### `GET /api/metrics`
+| Campo | Contenuto |
+| --- | --- |
+| `timestamp` | Data e ora locale dell'host in formato ISO |
+| `system` | Hostname, OS, architettura, utente, avvio e uptime |
+| `cpu` | Utilizzo, core, frequenze, tempi CPU e contatori |
+| `memory` | RAM e swap |
+| `storage` | I/O e partizioni accessibili |
+| `network` | Traffico, contatori e interfacce |
+| `processes` | Fino a 35 processi ordinati per utilizzo CPU |
 
-Restituisce uno snapshot JSON con la struttura:
+Schema interattivo: [localhost:8000/docs](http://localhost:8000/docs).
+Il contratto frontend è definito in
+[metrics.service.ts](PulseDeckFE/src/app/metrics.service.ts).
 
-```json
-{
-  "timestamp": "2026-05-20T12:34:56.789",
-  "system":  { "hostname": "...", "os": "...", "uptime": "...", ... },
-  "cpu":     { "total_percent": 12.3, "per_core": [...], ... },
-  "memory":  { "ram_total": "16.0 GB", "ram_percent": 42, ... },
-  "storage": { "read_speed": "1.2 MB/s", "partitions": [...] },
-  "network": { "upload_speed": "120.5 KB/s", "interfaces": [...] },
-  "processes": [ { "pid": 1234, "name": "...", "cpu_percent": 8.4, ... } ]
-}
-```
+## Compatibilità e limiti
 
-Lo schema completo è definito (lato TypeScript) in [PulseDeckFE/src/app/metrics.service.ts](PulseDeckFE/src/app/metrics.service.ts).
+- Alcune frequenze CPU, partizioni o interfacce non sono leggibili su tutti gli
+  host: le metriche opzionali mostrano `N/A` o elenchi vuoti.
+- La prima lettura delle velocità rete/disco può mostrare `N/A`, finché manca
+  il campione precedente. I primi valori di utilizzo CPU possono essere zero.
+- I contatori interrupt/DPC specifici di Windows valgono zero quando assenti.
+- I permessi dell'utente limitano i processi visibili; non occorre avviare come
+  amministratore per usare la dashboard.
+- In container o VM, le metriche si riferiscono all'ambiente visibile a `psutil`,
+  non necessariamente all'intera macchina fisica.
+- Lo storico del browser si azzera ricaricando la pagina. Non ci sono esportazione
+  o conservazione delle metriche.
 
-CORS è aperto a `*` per i soli metodi `GET`: adatto a uso locale, da restringere se si decide di esporre il servizio.
+## Build e utilizzo fuori dallo sviluppo
 
-## Build di produzione
-
-```bash
+```sh
 cd PulseDeckFE
-npm run build      # output → dist/pulsedeck-web
+npm ci
+npm run build
 ```
 
-Il backend va eseguito senza `--reload` in produzione (es. `uvicorn api:app --host 0.0.0.0 --port 8000`).
+I file statici sono in `PulseDeckFE/dist/pulsedeck-web/browser/`.
+Il server web deve servirli e inoltrare `/api` al backend **sullo stesso dominio**.
+Avvia FastAPI senza reload e con un solo worker, perché i contatori sono in memoria:
 
-## Note di compatibilità
+```sh
+python -m uvicorn api:app --host 127.0.0.1 --port 8000 --workers 1
+```
 
-L'app è multi-piattaforma, ma alcune metriche dipendono dal sistema operativo:
+GitHub ospita il codice; **GitHub Pages da solo non può eseguire il backend**.
+Pubblicare il repository non richiede di esporre la dashboard o le metriche.
 
-- **`load average`** (1/5/15 min) — disponibile solo su Linux/macOS. Su Windows il frontend mostra "non disponibile".
-- **`cpu_times.interrupt` e `cpu_times.dpc`** — disponibili solo su Windows; altrove valgono 0.
-- **Velocità rete e I/O disco** — sono calcolate per differenza tra due campionamenti, quindi la prima richiesta subito dopo l'avvio restituisce `"N/A"` finché non c'è un campione precedente.
-- **Lista processi** — su Windows `psutil.process_iter` è lento, perciò il backend la aggiorna in un thread di background ogni 2 secondi e la espone via cache.
+L'API è priva di autenticazione e contiene dati dell'host. Mantienila su loopback.
+Per accesso remoto serve una configurazione dedicata con autenticazione e TLS:
+vedi [SECURITY.md](SECURITY.md). Per default CORS consente soltanto
+`http://localhost:4200` e `http://127.0.0.1:4200`. Per origini diverse imposta
+`PULSEDECK_CORS_ORIGINS` con una lista separata da virgole prima di avviare FastAPI.
+Le variabili `.env` non vengono caricate automaticamente.
+
+## Sviluppo e verifiche
+
+```sh
+# Dalla root, con virtualenv attivo
+python -m unittest discover -s tests -v
+python -m compileall -q api.py
+
+# Frontend
+cd PulseDeckFE
+npm run build
+npm test -- --watch=false --browsers=ChromeHeadless
+npm audit
+```
+
+La [CI](.github/workflows/ci.yml) esegue i test Python su Windows, Linux e macOS e
+compila il frontend con Node 22. Dependabot propone aggiornamenti delle dipendenze.
+Requisiti Angular: [tabella ufficiale delle versioni](https://angular.dev/reference/versions).
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md) per test manuali e convenzioni.
+
+## Struttura
+
+```text
+PulseDeck/
+├── api.py                  # API, contatori e worker processi
+├── requirements.txt
+├── tests/                  # Regressioni e fallback cross-platform
+├── PulseDeckFE/            # SPA Angular
+│   ├── src/app/
+│   └── proxy.conf.json
+├── .github/                # CI, Dependabot e template
+├── CONTRIBUTING.md
+├── SECURITY.md
+└── LICENSE
+```
+
+## Contributi e licenza
+
+Apri una issue per bug o proposte, oppure una pull request seguendo
+[CONTRIBUTING.md](CONTRIBUTING.md). Rimuovi dati personali da log e screenshot.
+Le vulnerabilità vanno segnalate secondo [SECURITY.md](SECURITY.md).
+
+Distribuito con [licenza MIT](LICENSE). Novità in [CHANGELOG.md](CHANGELOG.md).

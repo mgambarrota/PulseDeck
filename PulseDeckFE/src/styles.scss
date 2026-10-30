@@ -1,8 +1,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  background: #0f0f1a;
-  color: #e0e0e0;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
+:root {
+  color-scheme: dark;
+  --bg: #0d1017; --surface: #151922; --raised: #1c212d; --border: #292f3e;
+  --text: #edf0f7; --muted: #a0a9bc; --lavender: #b5a1ff; --mint: #72e3bd;
+  --danger: #ff8a9b; --warning: #f4c377;
 }
+body { background: var(--bg); color: var(--text); font-family: 'Avenir Next', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { font: inherit; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--lavender); outline-offset: 4px; }
+::selection { background: #57488a; color: white; }
+
+// Shared motion definitions for the dashboard.
+@keyframes pulse-spin { to { transform: rotate(360deg); } }
+@keyframes pulse-rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-fill-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pulse-signal { 0% { box-shadow: 0 0 0 0 #72e3bd55; } 100% { box-shadow: 0 0 0 7px #72e3bd00; } }
+@keyframes pulse-trace-logo { from { stroke-dashoffset: 60; opacity: .2; } to { stroke-dashoffset: 0; opacity: 1; } }
+@keyframes pulse-trace-chart { from { stroke-dashoffset: 400; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
+@keyframes pulse-dot-in { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes pulse-card-sheen { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
