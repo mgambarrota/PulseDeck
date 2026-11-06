@@ -4,4 +4,4 @@ fastapi==0.162.0
 uvicorn==0.54.0
 # Keep security-sensitive HTTP/concurrency dependencies on audited versions.
 starlette==1.10.0
-anyio==4.15.1
+anyio==4.16.0
